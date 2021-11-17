@@ -1,28 +1,28 @@
 require("dotenv").config();
-const twit = require("./auth");
+const twit = require("./twit");
 const fs = require("fs");
 const path = require("path");
-const paramsPath = path.join(__dirname, "record.json");
+const paramsPath = path.join(__dirname, "params.json");
 
-const writeRecords = data => {
+function writeParams(data) {
   console.log("We are writing the params file ...", data);
   return fs.writeFileSync(paramsPath, JSON.stringify(data));
 }
 
-const readRecords = () => {
+function readParams() {
   console.log("We are reading the params file ...");
   const data = fs.readFileSync(paramsPath);
   return JSON.parse(data.toString());
 }
 
-const fetchTweets = last_record => {
+function getTweets(since_id) {
   return new Promise((resolve, reject) => {
     let params = {
-      q: "#dotnetcore",
+      q: "#entryleveldeveloper",
       count: 10,
     };
-    if (last_record) {
-      params.since_id = last_record;
+    if (since_id) {
+      params.since_id = since_id;
     }
     console.log("We are getting the tweets ...", params);
     twit.get("search/tweets", params, (err, data) => {
@@ -34,7 +34,7 @@ const fetchTweets = last_record => {
   });
 }
 
-const retweet = id => {
+function postRetweet(id) {
   return new Promise((resolve, reject) => {
     let params = {
       id,
@@ -50,25 +50,25 @@ const retweet = id => {
 
 async function main() {
   try {
-    const params = readRecords();
-    const data = await fetchTweets(params.since_id);
+    const params = readParams();
+    const data = await getTweets(params.since_id);
     const tweets = data.statuses;
-    console.log(`We got ${tweets.length} tweets so far 🤖`);
+    console.log("We got the tweets", tweets.length);
     for await (let tweet of tweets) {
       try {
-        await retweet(tweet.id_str);
-        console.log(`Retweeted 🤖 ${tweet.id_str}`);
-      } catch (err) {
-        console.log(`Couldn't retweet ☠️ ${tweet.id_str}`);
+        await postRetweet(tweet.id_str);
+        console.log("Successful retweet " + tweet.id_str);
+      } catch (e) {
+        console.log("Unsuccessful retweet " + tweet.id_str);
       }
       params.since_id = tweet.id_str;
     }
-    writeRecords(params);
-  } catch (err) {
-    console.error(err);
+    writeParams(params);
+  } catch (e) {
+    console.error(e);
   }
 }
 
-console.log("Getting back to work 🤖");
+console.log("Starting the twitter bot ...");
 
 setInterval(main, 10000);
